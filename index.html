@@ -110,7 +110,7 @@
             font-weight: bold;
             color: var(--primary-color);
         }
-        /* حقول الإدخال القابلة للكتابة والتعديل */
+        /* الحقول القابلة للكتابة والتعديل */
         .editable-input {
             width: 55%;
             padding: 2px 5px;
@@ -211,7 +211,7 @@
             border-top: 1px solid var(--border-color);
             padding-top: 4px;
         }
-        /* تنسيق الصورة الثابتة تماماً بدون تفاعل */
+        /* تنسيق الصورة الثابتة غير القابلة للتحريك */
         .resizable-image-wrapper {
             position: absolute;
             top: 20px;
@@ -243,10 +243,14 @@
                 box-shadow: none;
                 padding: 10px 15px;
             }
-            input, select {
+            input {
                 border: none !important;
                 background: transparent !important;
                 outline: none !important;
+            }
+            .resizable-image-wrapper {
+                border: none !important;
+                background: transparent !important;
             }
             * {
                 -webkit-print-color-adjust: exact !important;
@@ -257,16 +261,16 @@
 </head>
 <body>
 
-    <!-- شريط التحكم يحتوي على زر الطباعة فقط -->
+    <!-- شريط التحكم (زر الطباعة فقط) -->
     <div class="no-print control-bar">
         <button class="btn-custom" onclick="window.print()">طباعة النموذج</button>
     </div>
 
     <div class="document-container" id="documentContainer">
         
-        <!-- الصورة الثابتة في المنتصف -->
+        <!-- الصورة الثابتة -->
         <div class="resizable-image-wrapper">
-            <img src="1791898836604.png" alt="شعار الشركة">
+            <img src="1791898836604.png" alt="الشعار">
         </div>
 
         <!-- الهيدر -->
@@ -331,7 +335,7 @@
             </div>
         </div>
 
-        <!-- جدول الاستحقاقات والخصومات مع الحساب التلقائي -->
+        <!-- جدول الاستحقاقات والخصومات المدمج مع الحساب التلقائي -->
         <table class="data-table">
             <thead>
                 <tr>
@@ -466,7 +470,7 @@
         </div>
     </div>
 
-    <!-- سكربت الحساب التلقائي للأموال -->
+    <!-- جافاسكريبت لحساب المجاميع تلقائياً -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             calculateTotals();
