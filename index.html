@@ -49,6 +49,15 @@
         .btn-custom:hover {
             background: var(--secondary-color);
         }
+        .btn-success {
+            background: #2b6cb0;
+        }
+        .btn-save {
+            background: #2f855a;
+        }
+        .btn-save:hover {
+            background: #276749;
+        }
         .document-container {
             background-color: #fff;
             width: 800px;
@@ -177,23 +186,53 @@
             border-top: 1px solid var(--border-color);
             padding-top: 4px;
         }
-        /* تنسيق الصورة الثابتة داخل المستند */
+        /* تنسيقات الصور القابلة للتحريك والتكبير/التصغير داخل المستند */
         .resizable-image-wrapper {
             position: absolute;
             top: 20px;
             left: 350px;
             z-index: 1000;
             display: inline-block;
-            border: none;
+            touch-action: none;
+            cursor: move;
+            border: 2px dashed var(--secondary-color);
             padding: 0;
-            background: transparent;
-            pointer-events: none;
+            background: rgba(255, 255, 255, 0.7);
         }
         .resizable-image-wrapper img {
             width: 120px;
             height: auto;
             display: block;
             user-select: none;
+            pointer-events: none;
+        }
+        .remove-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #e53e3e;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 18px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 10;
+        }
+        .resize-handle {
+            position: absolute;
+            bottom: -6px;
+            left: -6px;
+            width: 14px;
+            height: 14px;
+            background: var(--secondary-color);
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: nwse-resize;
+            z-index: 10;
         }
         @media print {
             body {
@@ -213,6 +252,9 @@
                 border: none !important;
                 background: transparent !important;
             }
+            .remove-btn, .resize-handle {
+                display: none !important;
+            }
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -222,15 +264,15 @@
 </head>
 <body>
 
-    <!-- شريط التحكم يحتوي على زر الطباعة فقط -->
+    <!-- شريط التحكم والأزرار -->
     <div class="no-print control-bar">
         <button class="btn-custom" onclick="window.print()">طباعة النموذج</button>
+        <button class="btn-custom btn-success" onclick="document.getElementById('imageInput').click()">إضافة شعار / ختم</button>
+        <button class="btn-custom btn-save" onclick="saveDocumentState()">حفظ مكان وشكل الصور</button>
+        <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
     </div>
 
     <div class="document-container" id="documentContainer">
-        
-        <!-- الصورة الثابتة (يتم استرجاعها تلقائياً عند الحفظ أو وضعها برمجياً) -->
-
         <!-- الهيدر -->
         <div class="header-box">
             <div class="right-side">
@@ -428,11 +470,72 @@
         </div>
     </div>
 
-    <!-- سكربت استرجاع الصورة المحفوظة مسبقاً بشكل ثابت وثابت الأبعاد -->
+    <!-- جافاسكريبت التحكم بالصور وتحويلها إلى Base64 لتنتقل مع الكود لأي جهاز -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             loadSavedImages();
         });
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // تحويل الصورة إلى Base64 وتخزينها لتعمل على أي جهاز عند الحفظ
+                createDraggableImage(e.target.result, '20px', '350px', '120px');
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function createDraggableImage(src, top, left, width) {
+            const targetContainer = document.getElementById('documentContainer');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'resizable-image-wrapper';
+            wrapper.style.top = top;
+            wrapper.style.left = left;
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.style.width = width;
+
+            const removeBtn = document.createElement('div');
+            removeBtn.className = 'remove-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'حذف الصورة';
+            removeBtn.onclick = () => {
+                wrapper.remove();
+            };
+
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle';
+            resizeHandle.title = 'اسحب لتغيير الحجم';
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(removeBtn);
+            wrapper.appendChild(resizeHandle);
+            targetContainer.appendChild(wrapper);
+
+            makeImageInteractive(wrapper, img, resizeHandle);
+        }
+
+        function saveDocumentState() {
+            const wrappers = document.querySelectorAll('.resizable-image-wrapper');
+            const imagesData = [];
+
+            wrappers.forEach(wrapper => {
+                const img = wrapper.querySelector('img');
+                imagesData.push({
+                    src: img.src, // يتم حفظ الصورة مشفرة داخل النص Base64
+                    top: wrapper.style.top,
+                    left: wrapper.style.left,
+                    width: img.style.width
+                });
+            });
+
+            localStorage.setItem('savedClearanceImages', JSON.stringify(imagesData));
+            alert('تم حفظ مكان وحجم الصور بنجاح!');
+        }
 
         function loadSavedImages() {
             const savedData = localStorage.getItem('savedClearanceImages');
@@ -440,22 +543,114 @@
 
             try {
                 const imagesData = JSON.parse(savedData);
-                const targetContainer = document.getElementById('documentContainer');
                 imagesData.forEach(item => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'resizable-image-wrapper';
-                    wrapper.style.top = item.top;
-                    wrapper.style.left = item.left;
-
-                    const img = document.createElement('img');
-                    img.src = item.src;
-                    img.style.width = item.width;
-
-                    wrapper.appendChild(img);
-                    targetContainer.appendChild(wrapper);
+                    createDraggableImage(item.src, item.top, item.left, item.width);
                 });
             } catch (e) {
-                console.error('خطأ في استرجاع الصورة الثابتة:', e);
+                console.error('خطأ في استرجاع الصور المحفوظة:', e);
+            }
+        }
+
+        function makeImageInteractive(wrapper, img, handle) {
+            let isDragging = false;
+            let isResizing = false;
+            let startX, startY, startLeft, startTop, startWidth;
+
+            // 1. تحريك الصورة بالكامل
+            wrapper.addEventListener('mousedown', (e) => {
+                if (e.target === handle || e.target.classList.contains('remove-btn')) return;
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = wrapper.offsetLeft;
+                startTop = wrapper.offsetTop;
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+
+            wrapper.addEventListener('touchstart', (e) => {
+                if (e.target === handle || e.target.classList.contains('remove-btn') || e.touches.length !== 1) return;
+                isDragging = true;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startLeft = wrapper.offsetLeft;
+                startTop = wrapper.offsetTop;
+                document.addEventListener('touchmove', onTouchDrag, { passive: false });
+                document.addEventListener('touchend', stopTouchDrag);
+            });
+
+            function onDrag(e) {
+                if (!isDragging) return;
+                wrapper.style.left = (startLeft + (e.clientX - startX)) + 'px';
+                wrapper.style.top = (startTop + (e.clientY - startY)) + 'px';
+            }
+
+            function onTouchDrag(e) {
+                if (!isDragging || e.touches.length !== 1) return;
+                e.preventDefault();
+                wrapper.style.left = (startLeft + (e.touches[0].clientX - startX)) + 'px';
+                wrapper.style.top = (startTop + (e.touches[0].clientY - startY)) + 'px';
+            }
+
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+
+            function stopTouchDrag() {
+                isDragging = false;
+                document.removeEventListener('touchmove', onTouchDrag);
+                document.removeEventListener('touchend', stopTouchDrag);
+            }
+
+            // 2. التكبير والتصغير من الزاوية
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = img.offsetWidth;
+                document.addEventListener('mousemove', onResize);
+                document.addEventListener('mouseup', stopResize);
+            });
+
+            handle.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                if (e.touches.length !== 1) return;
+                isResizing = true;
+                startX = e.touches[0].clientX;
+                startWidth = img.offsetWidth;
+                document.addEventListener('touchmove', onTouchResize, { passive: false });
+                document.addEventListener('touchend', stopTouchResize);
+            });
+
+            function onResize(e) {
+                if (!isResizing) return;
+                let currentX = e.clientX;
+                let deltaX = currentX - startX;
+                let newWidth = Math.max(30, startWidth + deltaX);
+                img.style.width = newWidth + 'px';
+            }
+
+            function onTouchResize(e) {
+                if (!isResizing || e.touches.length !== 1) return;
+                e.preventDefault();
+                let currentX = e.touches[0].clientX;
+                let deltaX = currentX - startX;
+                let newWidth = Math.max(30, startWidth + deltaX);
+                img.style.width = newWidth + 'px';
+            }
+
+            function stopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', onResize);
+                document.removeEventListener('mouseup', stopResize);
+            }
+
+            function stopTouchResize() {
+                isResizing = false;
+                document.removeEventListener('touchmove', onTouchResize);
+                document.removeEventListener('touchend', stopTouchResize);
             }
         }
     </script>
